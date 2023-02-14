@@ -1,0 +1,49 @@
+---
+title: "PHP2511_HW1"
+author: "Kuan-Min Lee"
+date: "2023-02-11"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 1 Simple Linear Regression
+
+This Rmd file is created for Assignment 1 from PHP2511 course taught by Dr. Muillio in Spring 2023 semester at Brown University.
+
+## Exploratory Analysis Portion
+
+In this portion of the assignment, the dataset from paper "Association of Highly Restrictive State Abortion Policies With Abortion Rates, 2000-2014" is utilized, and the exploratory data analysis will be performed on this dataset.
+
+To start with this, we begin with loading the excel file of the dataset and viewing out the data structure of the dataset.
+
+We start with loading all libraries that are necessary for loading the dataset:
+```{r setup, include=FALSE}
+library(readxl) # import library for reading excel file
+```
+
+Next, we read in the excel file of the dataset and view the dimension of the dataset:
+```{r}
+dataset_test <- read_excel("state_rep_laws.xlsx") # read in excel file for the dataset
+```
+
+```{r cars}
+```{r}
+
+```
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
