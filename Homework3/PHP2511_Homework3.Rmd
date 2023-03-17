@@ -1,0 +1,240 @@
+---
+title: "PHP2511 Homework 3"
+author: "Kuan-Min Lee"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+date: "2023-03-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(broom)
+library(dplyr)
+library(AICcmodavg) # for AIC
+library(Metrics) # for RMSE
+```
+
+## Test-Train Split and Initial Predictor Selection:
+
+In this section, the dataset will be conducted with some preprocssing procedures to better fit the linear regression model.
+
+First, the variable "black" is filtered out from the original dataset.
+
+```{r}
+data_test <- read.csv("kidney_small.csv",header=TRUE,sep=",") # reading datasheet
+data_test <- subset(data_test,select=-c(black)) # filter out black variable
+```
+
+After filtering out the variable "black", the following code is inserted to create a train and test set from the original data.
+
+```{r}
+set.seed(1)
+data_test$id <- 1:nrow(data_test)
+kidney_train <- data_test %>% dplyr::sample_frac(0.75)
+kidney_test <- dplyr::anti_join(data_test, kidney_train, by = 'id')
+```
+
+
+### Initial Transformations
+
+The main goal of this section is to conduct the transformation to the variables of the linear model that is going to be fitted.
+
+The transformation is conducted on the continuous variables of the models, and in this models, the continuous variables are the variable "baseu", "bascre", and "gfr". Therefore, several transformations will be conducted and different combination of transformed variables will be utilized into the model to view the fitting results.
+
+### Plotting for log(gfr) vs baseu
+
+```{r}
+kidney_train$log_gfr<-log(kidney_train$gfr) # conduct log transform on training dataset
+kidney_test$log_gfr<-log(kidney_test$gfr) # conduct log transform on training dataset
+
+plot(kidney_train$log_gfr~kidney_train$baseu,ylab=c("log(gfr)"),xlab=c("baseu"),pch=16) # create a plot of log(gfr) vs baseu
+
+```
+From the above graph, tit's really hard to observe the relationship between the variable of log(gfr) and baseu since there's no obvious linear or nonlinear trend of the line between these two variables.
+
+### log(gfr) vs bascre:
+
+In this portion, a scatter plot of gfr vs sbase variables is created to view the potential relationship between these two variables.
+
+```{r}
+plot(kidney_train$log_gfr~kidney_train$bascre,ylab=c("log(gfr)"),xlab=c("bascre"),pch=16) # create a plot of log(gfr) vs bascre
+```
+From the above plot, there seems to be a decline linear relationship between the variable log(gfr) and bascre based on the dot distributions on the graph.
+
+### log(gfr) vs log(baseu):
+
+```{r}
+# conduct log transform on variable baseu
+kidney_train$log_baseu<-log(kidney_train$baseu) 
+kidney_test$log_baseu<-log(kidney_test$baseu) 
+
+plot(kidney_train$log_gfr~kidney_train$log_baseu,ylab=c("log(gfr)"),xlab=c("log(baseu)"),pch=16) # create a plot of log(gfr) vs log(baseu)
+
+```
+From the above plot, there seems to be a linear relationship that represents a horizontal line between the variable log(gfr) and log(baseu). From this observation, there's still not obvious linear or nonlinear relationship between the two variables.
+
+### log(gfr) vs log(bascre):
+
+In this portion, a scatter plot of gfr vs baseu variables is created to view the potential relationship between these two variables.
+
+```{r}
+# conduct log transformation on variable bascre
+kidney_train$log_bascre<-log(kidney_train$bascre) 
+kidney_test$log_bascre<-log(kidney_test$bascre) 
+
+plot(kidney_train$log_gfr~kidney_train$log_bascre,ylab=c("log(gfr)"),xlab=c("log(bascre)"),pch=16) # create a plot of log(gfr) vs log(bascre)
+```
+From the above plot, the relationship between the variable log(gfr) and log(bascre) becomes more linear compared to the one with bascre only. Therefore, from this prospect, the log transformation works on improving the linearity of the relationship between the two variables.
+
+### Model Fitting Testing
+
+In this portion, several linear model will be built to test the fitting results.
+
+### Model 1: log(gfr) ~ baseu + bascre + sbase + dbase + age + male
+
+```{r}
+model1 <- lm(log_gfr~baseu+bascre+sbase+dbase+age+male,data=kidney_train)
+summary(model1)
+```
+### Model 2: log(gfr) ~ log(baseu) + bascre + sbase + dbase + age + male
+
+```{r}
+model2 <- lm(log_gfr~log_baseu+bascre+sbase+dbase+age+male,data=kidney_train)
+summary(model2)
+```
+### Model 3: log(gfr) ~ baseu + log(bascre) + sbase + dbase + age + male
+
+```{r}
+model3 <- lm(log_gfr~baseu+log_bascre+sbase+dbase+age+male,data=kidney_train)
+summary(model3)
+``` 
+
+
+### Model 4: log(gfr) ~ log(baseu) + log(bascre) + sbase + dbase + age + male
+
+```{r}
+model4 <- lm(log_gfr~log_baseu+log_bascre+sbase+dbase+age+male,data=kidney_train)
+summary(model4)
+
+```
+
+```{r}
+# compute AIC for different models
+models <- list(model1,model2,model3,model4)
+mod.names <- c('no_log','log_baseu','log_bascre','log_both')
+aictab(cand.set=models,modnames=mod.names)
+```
+From the above fitting results, from the observation of the summary table, model 4 fits the data the best since it has the best overall residual standard error with the lowest value, and with the highest adjusted R value and the lowest AIC scores.
+
+And also,for respective log transformation on the two variables, the models that have the log-transformed variable perform better compared to the ones with the original variables. Therefore, from there, the conclusion that the log transformation on these two variables does work can be made.
+
+## Variables Selection:
+
+In this section, first, the effect of the drop of sbase and dbase variables are examined.
+
+To test it, the best model from the previous section, model 4, is picked as the sample and the other moels of droping sbase, dbase, and droping both are all built and tested.
+
+
+```{r}
+model4_1 <- lm(log_gfr~log_baseu+log_bascre+dbase+age+male,data=kidney_train) # drop sbase
+model4_2 <- lm(log_gfr~log_baseu+log_bascre+sbase+age+male,data=kidney_train) # drop dbase
+model4_3 <- lm(log_gfr~log_baseu+log_bascre+age+male,data=kidney_train) # drop both
+# compute AIC for different models
+models <- list(model4,model4_1,model4_2,model4_3)
+mod.names <- c('no_drop','drop_sbase','drop_dbase','drop_both')
+aictab(cand.set=models,modnames=mod.names)
+```
+From the above AIC values, the conclustion that droping both achieve the lowest AIC. Therefore, the decision of dropping both variables can be validated.
+
+Besides the AIC testing, and hypothesis testing on this decision can also be conducted on the effect of this decision. 
+
+The null hypothesis of such a testing model can be that the error between the two models are not statistically significant different from each other, and the alternative hypothesis is the opposite.
+
+To test it, we begin with the model dropping sbase.
+
+```{r}
+res_mod4<-model4$residuals # the residuals of model 4
+res_mod4_1<-model4_1$residuals # the residuals of model 4_1
+t.test(res_mod4,res_mod4_1,paired=TRUE)
+```
+From the previous observation, we first know that the residuals of model 4_1 is smaller than the residual of model 4. By further conducting the t test, it shows that the residual between the two are statistically significant from each other. Therefore, dropping sbase is necessary.
+
+For testing the effect of dbase, the residual of the previous part and the one with both variables dropped are compared. Therefore, in this round, the t test will be conducted on these two models.
+```{r}
+res_mod4_3<-model4_3$residuals # the residuals of model 4_3
+t.test(res_mod4_3,res_mod4_1,paired=TRUE)
+```
+From the previous section, it can also be seen taht the residual of model 4_3 is smaller than model 4_1. By conducting t test, it can be seen that the residuals between these two models are statistically significant from each other. Therefore, it can be seen that dropping dbase is also necessary.
+
+### Adding Polynomial Transformation:
+
+In this section of the work, the consideration of adding polynomial transformation on variable regarding serum creatinine is considered.
+
+To start our observation, the residuals of the model vs the log(bascre) is created.
+```{r}
+plot(kidney_train$log_bascre,model4_3$residuals)
+
+```
+From the above plot, it seems that the plot follows like a up curvature parabola. Therefore, a polynoimal transformation for degree of 2 is decided on log(bascre) variable.
+
+```{r}
+model4_3_2<-lm(log_gfr~log_baseu+age+male+poly(log_bascre,2),data=kidney_train)
+summary(model4_3_2)
+```
+
+### Evaluating Final Model:
+
+This is the final portion of this work. 
+
+The first work will be to compute the MAE and RMSE for the final model that has been obtained from the previous section.
+
+```{r}
+predictions_trains<-model4_3_2 %>% predict(kidney_train) # compute the predictions of training
+predictions_tests<-model4_3_2 %>% predict(kidney_test) # compute the predictions of testing
+RMSE_trains<-rmse(predictions_trains,kidney_train$log_gfr) # compute the RMSE for training
+RMSE_test<-rmse(predictions_tests,kidney_test$log_gfr) # compute the RMSR for testing
+RMSE_trains
+RMSE_test
+```
+
+```{r}
+MAE_trains<-mae(predictions_trains,kidney_train$log_gfr) # compute the RMSE for training
+MAE_test<-mae(predictions_tests,kidney_test$log_gfr) # compute the RMSR for testing
+MAE_trains
+MAE_test
+
+```
+
+In the later part, a series of diagnostic plots for model fitting are shown.
+
+First is the residual vs fitted values plot
+```{r}
+plot(fitted(model4_3_2), rstandard(model4_3_2),
+xlab = "Fitted",
+ylab = "Residuals", col = "blue")
+abline(h=0, col = "red")
+```
+From the plot shown above, it can be seen that the residual values doesn't vary much with the increase of the fitted value. Therefore, no matter how large the fitted value is, the residual stay relatively stable.
+
+Next, it's the qq plot and the histogram for the fitting model.
+```{r}
+par (mfrow = c (1,2))
+qqnorm(rstandard(model4_3_2), main = "", col = "blue")
+abline(0,1, col = "red")
+hist (rstandard(model4_3_2), main = "", xlab = "Standardized Residuals")
+```
+From the above plots, it can be seen that the theoretical quantiles and sample quantiles follow approximately a linear relationship, which shows that the fitting works fine in predicting the response variables with the given predictor variables. As for the distribution of the residuals, it follows approximately like a normal distribution with mean equal to 0.
+
+Last, it's the scale location plot
+```{r}
+plot(fitted(model4_3_2), sqrt(rstandard(model4_3_2)),
+xlab = "Fitted",
+ylab = "sqrt(standardized Residuals)", col = "blue")
+```
+From the above plot, it can be seen that the residuals between each fitted values are approximately eqaul for each fitted values. 
+
+To sum up the diagnostic conclusion for the model, based on the homoscedasticity testing, which the model has approximately equal variance for each fitted values and normality testing, which the model shows a linear relationship between the sample and theoretical quantiles, the model can predice a reasonable gfr value from a practical data from the outer world.
+
+Therefore, the above model should be robust enough to conduct the prediction.
